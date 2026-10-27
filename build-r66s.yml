@@ -90,7 +90,7 @@ jobs:
         echo "status=success" >> $GITHUB_ENV
 
     - name: Upload Firmware to Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: openwrt-r66s-firmware
