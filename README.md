@@ -5,26 +5,21 @@
 
 一、 固件預設目標與優化特點
 
-硬體目標：FastRhino R66S (RK3568, 2GB RAM)
+1. 硬體目標：FastRhino R66S (RK3568, 2GB RAM)
 
-網路設定：
+2. 網路設定：
 
-預設 IP: 192.168.1.1
+ - 預設 IP: 192.168.1.1
+ - 預設帳號: root
+ - 預設密碼: password
 
-預設帳號: root
+3. 介面與語言：
 
-預設密碼: password
+ - 主題：luci-theme-istore (iStoreOS 風格主題)
+ - 語言包：繁體中文 (zh-tw)、英文 (en)
 
-介面與語言：
+4. 過熱與自動關機防護優化：
 
-主題：luci-theme-istore (iStoreOS 風格主題)
-
-語言包：繁體中文 (zh-tw)、英文 (en)
-
-過熱與自動關機防護優化：
-
-設定 CPU 效能調節器（Governor）為 schedutil 或 conservative，避免長時間全速運行導致過熱。
-
-確保核心內建的 Thermal Management（熱功耗管理）及溫控降頻（Thermal Throttling）正常啟用。
-
-建議在放置時保持周圍通風，避免金屬外殼過度積熱。
+ - 設定 CPU 效能調節器（Governor）為 schedutil 或 conservative，避免長時間全速運行導致過熱。
+ - 確保核心內建的 Thermal Management（熱功耗管理）及溫控降頻（Thermal Throttling）正常啟用。
+ - 建議在放置時保持周圍通風，避免金屬外殼過度積熱。
