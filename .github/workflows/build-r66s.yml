@@ -1,4 +1,4 @@
-name: Build iStoreOS for R66S (ImageBuilder)
+name: Build ImmortalWrt for R66S (ImageBuilder)
 
 on:
   workflow_dispatch:
@@ -19,27 +19,25 @@ jobs:
         sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 python3-pip
         sudo timedatectl set-timezone "Asia/Hong_Kong"
 
-    - name: Download & Extract iStoreOS ImageBuilder
+    - name: Download & Extract Official ImmortalWrt ImageBuilder
       run: |
-        # 下載 KoolCenter / iStoreOS 官方 Rockchip RK35xx ImageBuilder
-        IB_URL="https://fw.koolcenter.com/iStoreOS/ib/rk35xx/istoreos-imagebuilder-rockchip-rk35xx.Linux-x86_64.tar.zst"
-        wget -q $IB_URL -O ib.tar.zst || wget -q "https://fw.koolcenter.com/iStoreOS/r66s/istoreos-imagebuilder-rockchip-rk35xx.Linux-x86_64.tar.zst" -O ib.tar.zst
-        
-        tar --zstd -xf ib.tar.zst
-        mv istoreos-imagebuilder-* openwrt_ib
+        # 使用官方 ImmortalWrt 23.05 rockchip/armv8 穩定版 ImageBuilder
+        IB_URL="https://downloads.immortalwrt.org/releases/23.05.4/targets/rockchip/armv8/immortalwrt-imagebuilder-23.05.4-rockchip-armv8.Linux-x86_64.tar.xz"
+        wget -qO- $IB_URL | tar -xJ
+        mv immortalwrt-imagebuilder-* openwrt_ib
 
-    - name: Customize Configurations & Overheat Fix
+    - name: Customize Configurations & Overheat Optimization
       run: |
         cd openwrt_ib
         
-        # 1. 建立開機預設設定檔 (uci-defaults)
+        # 建立開機預設設定檔 (uci-defaults)
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-r66s-optimize
         # 預設 IP 設為 192.168.1.1
         uci set network.lan.ipaddr='192.168.1.1'
         uci commit network
 
-        # CPU 防過熱優化：將頻率調節器設定為 schedutil
+        # CPU 防過熱優化：將頻率調節器設定為 schedutil，兼顧效能與發熱控制
         if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
             echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
         fi
@@ -53,22 +51,19 @@ jobs:
     - name: Build Firmware using ImageBuilder
       run: |
         cd openwrt_ib
-        # 使用 ImageBuilder 打包 R66S (fastrhino_r6xs) 韌體並加入繁體中文語系
-        make image PROFILE="fastrhino_r6xs" PACKAGES="luci-i18n-base-zh-tw luci-theme-istore" FILES="files"
+        
+        # 自動搜尋並鎖定 R66S 的正確 Profile 代號
+        PROFILE=$(make info | grep -oE 'fastrhino[^[:space:]]*r66s' | head -n 1)
+        if [ -z "$PROFILE" ]; then
+          PROFILE="fastrhino_r66s"
+        fi
+        echo "Using Target Profile: $PROFILE"
+        
+        # 開始打包韌體（加入繁體中文語系與預設設定檔案）
+        make image PROFILE="$PROFILE" PACKAGES="luci-i18n-base-zh-tw" FILES="files"
 
     - name: Organize Firmware Output
       id: organize
       if: (!cancelled())
       run: |
-        cd openwrt_ib/bin/targets/rockchip/rk35xx/
-        mkdir -p /tmp/firmware
-        cp *-squashfs-combined.img.gz /tmp/firmware/ || cp *.img.gz /tmp/firmware/
-        echo "FIRMWARE=/tmp/firmware" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_ENV
-
-    - name: Upload Firmware Artifact
-      uses: actions/upload-artifact@v4
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: istoreos-r66s-firmware
-        path: ${{ env.FIRMWARE }}
+        cd openwrt_ib/bin/targets/rockchip/armv8/
