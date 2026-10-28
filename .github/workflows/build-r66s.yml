@@ -47,17 +47,17 @@ jobs:
         EOF
         chmod +x files/etc/uci-defaults/99-r66s-optimize
 
-    - name: Build Firmware with iStoreOS Theme & Localization
+    - name: Build Firmware with Argon Theme & Localization
       run: |
         cd openwrt_ib
         
-        # 鎖定剛剛成功識別的官方正確機型名稱
+        # 鎖定官方正確機型名稱
         PROFILE_NAME="lunzn_fastrhino-r66s"
         
         echo "=== 開始打包 R66S 韌體 (機型: $PROFILE_NAME) ==="
         
-        # 打包時加入：iStoreOS 主題、繁體中文語系、2.5G網卡驅動
-        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-theme-istore luci-i18n-base-zh-tw kmod-r8125" FILES="files"
+        # 改用官方支援的高顏值 Argon 主題、繁體中文語系與 2.5G 網卡驅動
+        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-theme-argon luci-i18n-argon-config luci-i18n-base-zh-tw kmod-r8125" FILES="files"
 
     - name: Organize Firmware Output
       id: organize
