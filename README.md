@@ -1,25 +1,28 @@
-# fastrhino-r66s-rom2026
+# Fastrhino-r66s-rom2026
 ***電犀牛 FastRhino R66S (2GB) OpenWrt 自定義固件編譯指南***
 
-本指南將帶領你透過 GitHub Actions 雲端編譯專為 FastRhino R66S（基於 Rockchip RK3568 晶片）量身打造的 OpenWrt 固件。針對你提到的自動關機與過熱問題，我們將在配置中加入溫控優化、CPU 頻率調校以及適當的散熱策略。
+本專案透過 GitHub Actions 與 ImmortalWrt ImageBuilder，為 電犀牛 R66S (2GB RAM) 提供高效、穩定且自動化的雲端韌體編譯與打包方案。
 
-一、 固件預設目標與優化特點
+**🌟 韌體特色 (Features)**
 
-1. 硬體目標：FastRhino R66S (RK3568, 2GB RAM)
+  - 硬體適配：專為 Rockchip ARMv8 (RK3566) 晶片設計，對應官方機型代號 lunzn_fastrhino-r66s。
+  - 高效構建：採用 ImageBuilder 方案，免除龐大原始碼編譯時間，只需 1~2 分鐘即可完成打包。
+    
+**介面與語言：**
+  - 高顏值主題：內建現代化且支援深色模式的 Argon 主題 (luci-theme-argon)。
+  - 在地化支援：完整內建 繁體中文語系 (luci-i18n-base-zh-tw)。
+    
+**硬體：**
+  - FastRhino R66S (RK3568, 2GB RAM)
+**網卡驅動：**
+  - 內建雙 2.5G 網卡專用穩定驅動 (kmod-r8125)。
+  
+**網路預設：**
+  - 預設 IP: 192.168.1.1
+  - 預設帳號: root
+  - 預設密碼: password
 
-2. 網路設定：
+ **過熱與自動關機防護優化：**
+   過熱降溫優化：內建開機自啟動腳本，將 CPU 頻率調節器設定為 schedutil，兼顧效能並有效降低發熱與當機風險。
+    
 
- - 預設 IP: 192.168.1.1
- - 預設帳號: root
- - 預設密碼: password
-
-3. 介面與語言：
-
- - 主題：luci-theme-istore (iStoreOS 風格主題)
- - 語言包：繁體中文 (zh-tw)、英文 (en)
-
-4. 過熱與自動關機防護優化：
-
- - 設定 CPU 效能調節器（Governor）為 schedutil 或 conservative，避免長時間全速運行導致過熱。
- - 確保核心內建的 Thermal Management（熱功耗管理）及溫控降頻（Thermal Throttling）正常啟用。
- - 建議在放置時保持周圍通風，避免金屬外殼過度積熱。
