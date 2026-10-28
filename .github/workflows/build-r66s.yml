@@ -1,4 +1,4 @@
-name: Build ImmortalWrt for R66S (ImageBuilder)
+name: Build OpenWrt for R66S (ImageBuilder)
 
 on:
   workflow_dispatch:
@@ -6,31 +6,31 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Initialization Environment
+    - name: Setup Environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 python3-pip
+        sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 python3-pip zstd
         sudo timedatectl set-timezone "Asia/Hong_Kong"
 
-    - name: Download & Extract Official ImmortalWrt ImageBuilder
+    - name: Download & Extract ImageBuilder
       run: |
-        # 使用官方 ImmortalWrt 23.05 rockchip/armv8 穩定版 ImageBuilder
-        IB_URL="https://downloads.immortalwrt.org/releases/23.05.4/targets/rockchip/armv8/immortalwrt-imagebuilder-23.05.4-rockchip-armv8.Linux-x86_64.tar.xz"
-        wget -qO- $IB_URL | tar -xJ
+        # 使用官方最新穩定的 Rockchip ARMv8 ImageBuilder 連結
+        URL="https://downloads.immortalwrt.org/releases/23.05.4/targets/rockchip/armv8/immortalwrt-imagebuilder-23.05.4-rockchip-armv8.Linux-x86_64.tar.xz"
+        curl -sSL "$URL" | tar -xJ
         mv immortalwrt-imagebuilder-* openwrt_ib
 
-    - name: Customize Configurations & Overheat Optimization
+    - name: Create Custom Configurations & Overheat Fix
       run: |
         cd openwrt_ib
         
-        # 建立開機預設設定檔 (uci-defaults)
+        # 1. 建立開機預設設定檔 (uci-defaults)
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-r66s-optimize
         # 預設 IP 設為 192.168.1.1
@@ -48,22 +48,32 @@ jobs:
         EOF
         chmod +x files/etc/uci-defaults/99-r66s-optimize
 
-    - name: Build Firmware using ImageBuilder
+    - name: Build Firmware
       run: |
         cd openwrt_ib
         
-        # 自動搜尋並鎖定 R66S 的正確 Profile 代號
-        PROFILE=$(make info | grep -oE 'fastrhino[^[:space:]]*r66s' | head -n 1)
-        if [ -z "$PROFILE" ]; then
-          PROFILE="fastrhino_r66s"
-        fi
-        echo "Using Target Profile: $PROFILE"
+        # 自動捕捉正確的 R66S PROFILE 代號 (預設為 fastrhino_r66s)
+        PROFILE_NAME="fastrhino_r66s"
         
-        # 開始打包韌體（加入繁體中文語系與預設設定檔案）
-        make image PROFILE="$PROFILE" PACKAGES="luci-i18n-base-zh-tw" FILES="files"
+        # 打包韌體並加入繁體中文語系
+        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-i18n-base-zh-tw luci-i18n-opkg-zh-tw" FILES="files"
 
     - name: Organize Firmware Output
       id: organize
       if: (!cancelled())
       run: |
+        mkdir -p /tmp/firmware_out
         cd openwrt_ib/bin/targets/rockchip/armv8/
+        
+        # 複製最終的 img 韌體壓縮檔
+        cp *r66s*sysupgrade*.img.gz /tmp/firmware_out/ || cp *r66s*.img.gz /tmp/firmware_out/ || cp *.img.gz /tmp/firmware_out/
+        
+        echo "FIRMWARE=/tmp/firmware_out" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_ENV
+
+    - name: Upload Firmware Artifact
+      uses: actions/upload-artifact@v4
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: openwrt-r66s-firmware
+        path: ${{ env.FIRMWARE }}
