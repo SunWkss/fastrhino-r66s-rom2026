@@ -26,6 +26,14 @@ jobs:
           swig texinfo uglifyjs upx-ucl uuid-dev xsltproc zlib1g-dev zstd
         sudo timedatectl set-timezone "Asia/Hong_Kong"
 
+    - name: Create Swap Space (Prevent Out of Memory Error)
+      run: |
+        sudo fallocate -l 8G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        echo "Swap space created successfully."
+
     - name: Clone iStoreOS Source Code
       run: |
         git clone -b istoreos-22.03 https://github.com/istoreos/istoreos.git openwrt
@@ -77,7 +85,8 @@ jobs:
     - name: Compile Firmware
       run: |
         cd openwrt
-        make -j$(nproc) || make -j1 V=s
+        # 限制使用 2 個執行緒編譯，避免記憶體暴衝，失敗時自動轉為詳細單執行緒輸出
+        make -j2 || make -j1 V=s
 
     - name: Organize Files
       id: organize
