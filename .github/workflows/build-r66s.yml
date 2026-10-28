@@ -29,14 +29,14 @@ jobs:
       run: |
         cd openwrt_ib
         
-        # 建立開機預設設定檔 (uci-defaults)
+        # 1. 建立開機預設設定檔 (uci-defaults)：設定預設 IP 並寫入 CPU 溫控優化
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-r66s-optimize
         # 預設 IP 設為 192.168.1.1
         uci set network.lan.ipaddr='192.168.1.1'
         uci commit network
 
-        # CPU 防過熱優化：將頻率調節器設定為 schedutil
+        # CPU 防過熱優化：將頻率調節器設定為 schedutil，兼顧效能與發熱控制
         if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
             echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
         fi
@@ -47,24 +47,17 @@ jobs:
         EOF
         chmod +x files/etc/uci-defaults/99-r66s-optimize
 
-    - name: Detect Profile and Build Firmware
+    - name: Build Firmware with iStoreOS Theme & Localization
       run: |
         cd openwrt_ib
         
-        echo "=== 正在檢查並列出所有支援的機型代號 ==="
-        make info || true
+        # 鎖定剛剛成功識別的官方正確機型名稱
+        PROFILE_NAME="lunzn_fastrhino-r66s"
         
-        # 自動動態擷取包含 r66s 或 fastrhino 的正確 Profile 名稱
-        PROFILE_NAME=$(make info | grep -E "r66s|fastrhino" | head -n 1 | awk '{print $1}' | tr -d ':')
+        echo "=== 開始打包 R66S 韌體 (機型: $PROFILE_NAME) ==="
         
-        if [ -z "$PROFILE_NAME" ]; then
-          PROFILE_NAME="fastrhino_r66s"
-        fi
-        
-        echo "=== 自動鎖定機型代號: $PROFILE_NAME ==="
-        
-        # 開始打包韌體
-        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-i18n-base-zh-tw" FILES="files"
+        # 打包時加入：iStoreOS 主題、繁體中文語系、2.5G網卡驅動
+        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-theme-istore luci-i18n-base-zh-tw kmod-r8125" FILES="files"
 
     - name: Organize Firmware Output
       id: organize
