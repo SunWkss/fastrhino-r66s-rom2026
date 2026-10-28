@@ -26,19 +26,11 @@ jobs:
           swig texinfo uglifyjs upx-ucl uuid-dev xsltproc zlib1g-dev zstd
         sudo timedatectl set-timezone "Asia/Hong_Kong"
 
-    - name: Create Swap Space (Prevent Out of Memory Error)
-      run: |
-        sudo fallocate -l 8G /swapfile
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
-        echo "Swap space created successfully."
-
     - name: Clone iStoreOS Source Code
       run: |
-        git clone -b istoreos-22.03 https://github.com/istoreos/istoreos.git openwrt
+        git clone --depth 1 -b istoreos-22.03 https://github.com/istoreos/istoreos.git openwrt
 
-    - name: Update Feeds
+    - name: Update & Install Feeds
       run: |
         cd openwrt
         ./scripts/feeds update -a
@@ -48,22 +40,23 @@ jobs:
       run: |
         cd openwrt
         
-        # 1. R66S 硬體目標設定 (Rockchip ARMv8)
-        echo "CONFIG_TARGET_rockchip=y" >> .config
+        # 1. 指定 FastRhino R66S 機型
+        echo "CONFIG_TARGET_rockchip=y" > .config
         echo "CONFIG_TARGET_rockchip_armv8=y" >> .config
         echo "CONFIG_TARGET_ROCKCHIP_ARMV8_DEVICE_fastrhino_r66s=y" >> .config
 
-        # 2. 繁體中文支援
+        # 2. 繁體中文與基礎套件
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-tw=y" >> .config
+        echo "CONFIG_PACKAGE_luci-theme-istore=y" >> .config
 
-        # 3. 過熱優化與預設 IP 設定 (uci-defaults)
+        # 3. 過熱優化與預設 192.168.1.1 設定
         mkdir -p package/base-files/files/etc/uci-defaults
         cat << 'EOF' > package/base-files/files/etc/uci-defaults/99-r66s-optimize
-        # 預設 IP 設為 192.168.1.1
+        # 預設 IP
         uci set network.lan.ipaddr='192.168.1.1'
         uci commit network
 
-        # 過熱優化：將 CPU 頻率調節器設為 schedutil
+        # CPU 防過熱調速器設為 schedutil
         if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
             echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
         fi
@@ -74,29 +67,31 @@ jobs:
         EOF
         chmod +x package/base-files/files/etc/uci-defaults/99-r66s-optimize
 
+        # 生成預設配置並補全依賴
         make defconfig
 
-    - name: Download Package
+    - name: Download Source Packages
       run: |
         cd openwrt
         make download -j8
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile Firmware
+    - name: Single-Thread Safety Compile
       run: |
         cd openwrt
-        # 限制使用 2 個執行緒編譯，避免記憶體暴衝，失敗時自動轉為詳細單執行緒輸出
-        make -j2 || make -j1 V=s
+        # 使用 -j$(nproc) 如果失敗自動退回 -j1 V=s 輸出詳細 Log
+        make -j$(nproc) || make -j1 V=s
 
-    - name: Organize Files
+    - name: Organize Firmware Output
       id: organize
       if: (!cancelled())
       run: |
-        cd openwrt/bin/targets/*/*
+        cd openwrt/bin/targets/rockchip/armv8/
+        rm -rf packages
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_ENV
 
-    - name: Upload Firmware to Artifacts
+    - name: Upload Firmware Artifact
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
