@@ -50,30 +50,17 @@ jobs:
     - name: Build Firmware with Clean Packages
       run: |
         cd openwrt_ib
-        
-        # 鎖定官方正確機型名稱
         PROFILE_NAME="lunzn_fastrhino-r66s"
-        
         echo "=== 開始打包 R66S 韌體 (機型: $PROFILE_NAME) ==="
-        
-        # 移除了找不到的 config 擴充包，保留核心 Argon 主題、繁體中文與 2.5G 網卡驅動
         make image PROFILE="$PROFILE_NAME" PACKAGES="luci-theme-argon luci-i18n-base-zh-tw kmod-r8125" FILES="files"
 
-    - name: Organize Firmware Output
-      id: organize
-      if: (!cancelled())
+    - name: Check Output Directory
       run: |
-        mkdir -p /tmp/firmware_out
-        cd openwrt_ib/bin/targets/rockchip/armv8/
-        
-        cp *.img.gz /tmp/firmware_out/ || true
-        
-        echo "FIRMWARE=/tmp/firmware_out" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_ENV
+        echo "=== 檢查產出資料夾內容 ==="
+        ls -la openwrt_ib/bin/targets/rockchip/armv8/ || true
 
     - name: Upload Firmware Artifact
       uses: actions/upload-artifact@v4
-      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: openwrt-r66s-firmware
-        path: ${{ env.FIRMWARE }}
+        path: openwrt_ib/bin/targets/rockchip/armv8/
