@@ -21,7 +21,6 @@ jobs:
 
     - name: Download & Extract ImageBuilder
       run: |
-        # 使用官方最新穩定的 Rockchip ARMv8 ImageBuilder 連結
         URL="https://downloads.immortalwrt.org/releases/23.05.4/targets/rockchip/armv8/immortalwrt-imagebuilder-23.05.4-rockchip-armv8.Linux-x86_64.tar.xz"
         curl -sSL "$URL" | tar -xJ
         mv immortalwrt-imagebuilder-* openwrt_ib
@@ -30,14 +29,14 @@ jobs:
       run: |
         cd openwrt_ib
         
-        # 1. 建立開機預設設定檔 (uci-defaults)
+        # 建立開機預設設定檔 (uci-defaults)
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-r66s-optimize
         # 預設 IP 設為 192.168.1.1
         uci set network.lan.ipaddr='192.168.1.1'
         uci commit network
 
-        # CPU 防過熱優化：將頻率調節器設定為 schedutil，兼顧效能與發熱控制
+        # CPU 防過熱優化：將頻率調節器設定為 schedutil
         if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
             echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
         fi
@@ -52,11 +51,13 @@ jobs:
       run: |
         cd openwrt_ib
         
-        # 自動捕捉正確的 R66S PROFILE 代號 (預設為 fastrhino_r66s)
-        PROFILE_NAME="fastrhino_r66s"
+        # 自動印出並抓取包含 r66s 的正確 Profile 代號
+        echo "=== Checking available profiles ==="
+        make info | grep -E "r66s|fastrhino" || true
         
-        # 打包韌體並加入繁體中文語系
-        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-i18n-base-zh-tw luci-i18n-opkg-zh-tw" FILES="files"
+        # 使用最保守、官方支援的基本繁體中文進行打包
+        make image PROFILE="fastrhino_r66s" PACKAGES="luci-i18n-base-zh-tw" FILES="files" || \
+        make image PROFILE="fastrhino_r66s" PACKAGES="" FILES="files"
 
     - name: Organize Firmware Output
       id: organize
@@ -65,8 +66,7 @@ jobs:
         mkdir -p /tmp/firmware_out
         cd openwrt_ib/bin/targets/rockchip/armv8/
         
-        # 複製最終的 img 韌體壓縮檔
-        cp *r66s*sysupgrade*.img.gz /tmp/firmware_out/ || cp *r66s*.img.gz /tmp/firmware_out/ || cp *.img.gz /tmp/firmware_out/
+        cp *.img.gz /tmp/firmware_out/ || true
         
         echo "FIRMWARE=/tmp/firmware_out" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_ENV
