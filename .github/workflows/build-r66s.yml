@@ -47,17 +47,24 @@ jobs:
         EOF
         chmod +x files/etc/uci-defaults/99-r66s-optimize
 
-    - name: Build Firmware
+    - name: Detect Profile and Build Firmware
       run: |
         cd openwrt_ib
         
-        # 自動印出並抓取包含 r66s 的正確 Profile 代號
-        echo "=== Checking available profiles ==="
-        make info | grep -E "r66s|fastrhino" || true
+        echo "=== 正在檢查並列出所有支援的機型代號 ==="
+        make info || true
         
-        # 使用最保守、官方支援的基本繁體中文進行打包
-        make image PROFILE="fastrhino_r66s" PACKAGES="luci-i18n-base-zh-tw" FILES="files" || \
-        make image PROFILE="fastrhino_r66s" PACKAGES="" FILES="files"
+        # 自動動態擷取包含 r66s 或 fastrhino 的正確 Profile 名稱
+        PROFILE_NAME=$(make info | grep -E "r66s|fastrhino" | head -n 1 | awk '{print $1}' | tr -d ':')
+        
+        if [ -z "$PROFILE_NAME" ]; then
+          PROFILE_NAME="fastrhino_r66s"
+        fi
+        
+        echo "=== 自動鎖定機型代號: $PROFILE_NAME ==="
+        
+        # 開始打包韌體
+        make image PROFILE="$PROFILE_NAME" PACKAGES="luci-i18n-base-zh-tw" FILES="files"
 
     - name: Organize Firmware Output
       id: organize
